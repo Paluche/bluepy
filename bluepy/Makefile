@@ -48,6 +48,3 @@ TAGS: *.c $(BLUEZ_PATH)/attrib/*.[ch] $(BLUEZ_PATH)/btio/*.[ch]
 
 clean:
 	rm -rf *.o bluepy-helper TAGS $(BLUEZ_PATH)
-
-
-

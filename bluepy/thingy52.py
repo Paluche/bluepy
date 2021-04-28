@@ -7,16 +7,16 @@ def write_uint16(data, value, index):
     """ Write 16bit value into data string at index and return new string """
     data = data.decode('utf-8')  # This line is added to make sure both Python 2 and 3 works
     return '{}{:02x}{:02x}{}'.format(
-                data[:index*4], 
-                value & 0xFF, value >> 8, 
+                data[:index*4],
+                value & 0xFF, value >> 8,
                 data[index*4 + 4:])
 
 def write_uint8(data, value, index):
     """ Write 8bit value into data string at index and return new string """
     data = data.decode('utf-8')  # This line is added to make sure both Python 2 and 3 works
     return '{}{:02x}{}'.format(
-                data[:index*2], 
-                value, 
+                data[:index*2],
+                value,
                 data[index*2 + 2:])
 
 # Please see # Ref https://nordicsemiconductor.github.io/Nordic-Thingy52-FW/documentation
@@ -86,7 +86,7 @@ class BatterySensor():
     """
     Battery Service module. Instance the class and enable to get access to Battery interface.
     """
-    svcUUID = UUID(BATTERY_SERVICE_UUID)  # Ref https://www.bluetooth.com/specifications/gatt/services 
+    svcUUID = UUID(BATTERY_SERVICE_UUID)  # Ref https://www.bluetooth.com/specifications/gatt/services
     dataUUID = UUID(BATTERY_LEVEL_UUID) # Ref https://www.bluetooth.com/specifications/gatt/characteristics
 
     def __init__(self, periph):
@@ -271,11 +271,11 @@ class UserInterfaceService():
 
     def set_led_mode_off(self):
         self.led_char.write(b"\x00", True)
-        
+
     def set_led_mode_constant(self, r, g, b):
         teptep = "01{:02X}{:02X}{:02X}".format(r, g, b)
         self.led_char.write(binascii.a2b_hex(teptep), True)
-        
+
     def set_led_mode_breathe(self, color, intensity, delay):
         """
         Set LED to breathe mode.
@@ -286,8 +286,8 @@ class UserInterfaceService():
         teptep = "02{:02X}{:02X}{:02X}{:02X}".format(color, intensity,
                 delay & 0xFF, delay >> 8)
         self.led_char.write(binascii.a2b_hex(teptep), True)
-        
-    def set_led_mode_one_shot(self, color, intensity):  
+
+    def set_led_mode_one_shot(self, color, intensity):
         """
         Set LED to one shot mode.
         color has to be within 0x01 and 0x07
@@ -572,14 +572,14 @@ class SoundService():
 
 
 class MyDelegate(DefaultDelegate):
-    
+
     def handleNotification(self, hnd, data):
         #Debug print repr(data)
         if (hnd == e_temperature_handle):
             teptep = binascii.b2a_hex(data)
             print('Notification: Temp received:  {}.{} degCelsius'.format(
                         self._str_to_int(teptep[:-2]), int(teptep[-2:], 16)))
-            
+
         elif (hnd == e_pressure_handle):
             pressure_int, pressure_dec = self._extract_pressure_data(data)
             print('Notification: Press received: {}.{} hPa'.format(
@@ -595,7 +595,7 @@ class MyDelegate(DefaultDelegate):
 
         elif (hnd == e_color_handle):
             teptep = binascii.b2a_hex(data)
-            print('Notification: Color: {}'.format(teptep))            
+            print('Notification: Color: {}'.format(teptep))
 
         elif (hnd == ui_button_handle):
             teptep = binascii.b2a_hex(data)
@@ -635,7 +635,7 @@ class MyDelegate(DefaultDelegate):
 
         elif (hnd == m_gravity_handle):
             teptep = binascii.b2a_hex(data)
-            print('Notification: Gravity: {}'.format(teptep))        
+            print('Notification: Gravity: {}'.format(teptep))
 
         elif (hnd == s_speaker_status_handle):
             teptep = binascii.b2a_hex(data)
@@ -648,14 +648,14 @@ class MyDelegate(DefaultDelegate):
         else:
             teptep = binascii.b2a_hex(data)
             print('Notification: UNKOWN: hnd {}, data {}'.format(hnd, teptep))
-            
+
 
     def _str_to_int(self, s):
         """ Transform hex str into int. """
         i = int(s, 16)
         if i >= 2**7:
             i -= 2**8
-        return i    
+        return i
 
     def _extract_pressure_data(self, data):
         """ Extract pressure data from data string. """
@@ -684,7 +684,7 @@ class MyDelegate(DefaultDelegate):
 class Thingy52(Peripheral):
     """
     Thingy:52 module. Instance the class and enable to get access to the Thingy:52 Sensors.
-    The addr of your device has to be know, or can be found by using the hcitool command line 
+    The addr of your device has to be know, or can be found by using the hcitool command line
     tool, for example. Call "> sudo hcitool lescan" and your Thingy's address should show up.
     """
     def __init__(self, addr):
@@ -811,7 +811,7 @@ def main():
         # Allow sensors time to start up (might need more time for some sensors to be ready)
         print('All requested sensors and notifications are enabled...')
         time.sleep(1.0)
-        
+
         counter=1
         while True:
             if args.battery:
@@ -819,7 +819,7 @@ def main():
 
             if counter >= args.count:
                 break
-            
+
             counter += 1
             thingy.waitForNotifications(args.t)
 

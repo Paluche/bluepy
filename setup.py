@@ -65,7 +65,7 @@ setup (
         'Programming Language :: Python :: 3.4',
     ],
     packages=['bluepy'],
-    
+
     package_data={
         'bluepy': ['bluepy-helper', '*.json', 'bluez-src.tgz', 'bluepy-helper.c', 'version.h', 'Makefile']
     },
@@ -78,4 +78,3 @@ setup (
         ]
     }
 )
-

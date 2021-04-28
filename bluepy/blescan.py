@@ -52,8 +52,8 @@ def dump_services(dev):
                     break
                 try:
                     val = dev.readCharacteristic(h)
-                    print ("\t%04x:     <%s>" %
-                           (h, binascii.b2a_hex(val).decode('utf-8')))
+                    print("\t%04x:     <%s>" %
+                          (h, binascii.b2a_hex(val).decode('utf-8')))
                 except btle.BTLEException:
                     break
 

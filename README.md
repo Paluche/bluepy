@@ -11,7 +11,7 @@ The code is tested on Python 2.7 and 3.4; it should also work on 3.3.
 
 There is also code which uses this to talk to a TI SensorTag (www.ti.com/sensortag).
 
-An example to interface the Nordic Semiconductor ASA IoT Sensor Kit, Thingy:52 is available 
+An example to interface the Nordic Semiconductor ASA IoT Sensor Kit, Thingy:52 is available
 in thingy52.py (https://www.nordicsemi.com/eng/Products/Nordic-Thingy-52).
 
 Installation
@@ -89,7 +89,7 @@ Release 1.2.0
 - Merge #275, fix #259: non-ASCII device names now don't break decoding
 - Fix #263, #278: return UUID in scan results
 - Merge #262: Return correct address type in passive scan
- 
+
 
 Release 1.1.4:
 - Further attempts to fix #158. setup.py rewritten.
@@ -123,7 +123,7 @@ Release 1.1.0
 Release 1.0.5
 - Fix issue #123: Scanner documentation updated
 - Fix #125: setup.py error reporting on Python 3 if compilation fails
-- Fix for issue #127: setup.py fails to rebuild bluepy-helper 
+- Fix for issue #127: setup.py fails to rebuild bluepy-helper
 
 Release 1.0.4
 - Scanner now available as bluepy.blescan module and 'blescan' command
@@ -138,7 +138,7 @@ Release 0.9.12
 - Support for CC2650 sensortag
 - Documentation fixes
 - Bug fix: DefaultDelegate has a handleDiscovery method
-- Bug fix: keypress now works with both V1.4 and V1.5 firmware 
+- Bug fix: keypress now works with both V1.4 and V1.5 firmware
 
 
 Release 0.9.11
@@ -169,7 +169,7 @@ Release 0.9.0
 Release 0.2.0
 
 - Sphinx-based documentation
-- SensorTag optimisations 
+- SensorTag optimisations
 - Improved command line interface to sensortag.py
 - Added .gitignore file (github issue #17)
 
@@ -196,8 +196,5 @@ TO DO list
 ----------
 
 The following are still missing from the current release:
-- Unit test 
+- Unit test
 - Peripheral role support
-
-
-

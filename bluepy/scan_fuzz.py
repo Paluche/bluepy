@@ -24,6 +24,5 @@ if __name__ == '__main__':
                  'flag' : [ 4 ],
                  'd' : [ db ] }
         sr._update(resp)
-        
+
         print ("Result:", sr.getScanData())
-        
