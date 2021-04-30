@@ -582,7 +582,7 @@ static void gatts_prep_write_req(const uint8_t * pdu,
 {
     uint8_t * opdu;
     uint8_t   opcode;
-    uint8_t   handle; // FIXME 16 bits
+    uint16_t  handle;
     uint16_t  olen;
     size_t    plen;
 
