@@ -41,7 +41,7 @@ bluez-tarfile:
 GET_SERVICES=get_services.py
 
 uuids.json: $(GET_SERVICES)
-	python $(GET_SERVICES) > uuids.json
+	python3 $(GET_SERVICES) > uuids.json
 
 TAGS: *.c $(BLUEZ_PATH)/attrib/*.[ch] $(BLUEZ_PATH)/btio/*.[ch]
 	etags $^
