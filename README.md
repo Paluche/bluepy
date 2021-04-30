@@ -46,6 +46,21 @@ For Python 3, you may need to use `pip3`:
 I would recommend having command-line tools from BlueZ available for debugging. There
 are instructions for building BlueZ on the Raspberry Pi at http://www.elinux.org/RPi_Bluetooth_LE.
 
+Running as non-root
+-------------------
+
+You will need:
+
+    $ sudo apt-get install libcap2-bin
+
+Look where the scripts are installed (location) using:
+
+    $ pip show bluepy
+
+Add the capacity to the `bluepy-helper` executable:
+
+    $ sudo setcap "cap_net_raw,cap_net_admin+eip" <location>/bluepy/bluepy-helper
+
 Documentation
 -------------
 
