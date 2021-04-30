@@ -9,6 +9,7 @@ import binascii
 import select
 import struct
 import signal
+import logging
 from queue import Queue, Empty
 from threading import Thread
 
@@ -17,7 +18,6 @@ def preexec_function():
     # signal handler SIG_IGN.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-Debugging = False
 script_path = os.path.join(os.path.abspath(os.path.dirname(__file__)))
 helperExe = os.path.join(script_path, "bluepy-helper")
 
@@ -28,10 +28,7 @@ SEC_LEVEL_HIGH = "high"
 ADDR_TYPE_PUBLIC = "public"
 ADDR_TYPE_RANDOM = "random"
 
-def DBG(*args):
-    if Debugging:
-        msg = " ".join([str(a) for a in args])
-        print(msg)
+logger = logging.getLogger('bluepy')
 
 
 class BTLEException(Exception):
@@ -250,10 +247,12 @@ class DefaultDelegate:
         pass
 
     def handleNotification(self, cHandle, data):
-        DBG("Notification:", cHandle, "sent data", binascii.b2a_hex(data))
+        logger.debug("Notification: %s sent data %s",
+                     cHandle,
+                     binascii.b2a_hex(data))
 
     def handleDiscovery(self, scanEntry, isNewDev, isNewData):
-        DBG("Discovered device", scanEntry.addr)
+        logger.debug("Discovered device %s", scanEntry.addr)
 
 class BluepyHelper:
     def __init__(self):
@@ -269,7 +268,7 @@ class BluepyHelper:
 
     def _startHelper(self,iface=None):
         if self._helper is None:
-            DBG("Running ", helperExe)
+            logger.debug("Running %s", helperExe)
             self._lineq = Queue()
             self._mtu = 0
             self._stderr = open(os.devnull, "w")
@@ -295,7 +294,7 @@ class BluepyHelper:
 
     def _stopHelper(self):
         if self._helper is not None:
-            DBG("Stopping ", helperExe)
+            logger.debug("Stopping %s", helperExe)
             self._helper.stdin.write("quit\n")
             self._helper.stdin.flush()
             self._helper.wait()
@@ -307,7 +306,7 @@ class BluepyHelper:
     def _writeCmd(self, cmd):
         if self._helper is None:
             raise BTLEInternalError("Helper not started (did you call connect()?)")
-        DBG("Sent: ", cmd)
+        logger.debug("Sent: %s", cmd)
         self._helper.stdin.write(cmd)
         self._helper.stdin.flush()
 
@@ -348,10 +347,10 @@ class BluepyHelper:
             try:
                 rv = self._lineq.get(timeout=timeout)
             except Empty:
-                DBG("Select timeout")
+                logger.debug("Select timeout")
                 return None
 
-            DBG("Got:", repr(rv))
+            logger.debug("Got: %s", repr(rv))
             if rv.startswith('#') or rv == '\n' or len(rv)==0:
                 continue
 
@@ -366,7 +365,7 @@ class BluepyHelper:
                 new_mtu = int(resp['mtu'][0])
                 if self._mtu != new_mtu:
                     self._mtu = new_mtu
-                    DBG("Updated MTU: " + str(self._mtu))
+                    logger.debug("Updated MTU: %s", self._mtu)
 
             if respType in wantType:
                 return resp
