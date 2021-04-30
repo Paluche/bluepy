@@ -226,78 +226,78 @@ static void send_addr(const struct mgmt_addr_info *addr)
 
 static void resp_end()
 {
-  printf("\n");
-  fflush(stdout);
+    printf("\n");
+    fflush(stdout);
 }
 
 static void resp_error(const char *errcode)
 {
-  resp_begin(rsp_ERROR);
-  send_sym(tag_ERRCODE, errcode);
-  resp_end();
+    resp_begin(rsp_ERROR);
+    send_sym(tag_ERRCODE, errcode);
+    resp_end();
 }
 
 static void resp_str_error(const char *errcode, const char *msg)
 {
-  resp_begin(rsp_ERROR);
-  send_sym(tag_ERRCODE, errcode);
-  send_str(tag_ERRMSG, msg);
-  resp_end();
+    resp_begin(rsp_ERROR);
+    send_sym(tag_ERRCODE, errcode);
+    send_str(tag_ERRMSG, msg);
+    resp_end();
 }
 
 static void resp_att_error(uint8_t status)
 {
-  resp_begin(rsp_ERROR);
-  send_sym(tag_ERRCODE, err_ATT_ERR);
-  send_uint(tag_ERRSTAT, status);
-  send_str(tag_ERRMSG, att_ecode2str(status));
-  resp_end();
+    resp_begin(rsp_ERROR);
+    send_sym(tag_ERRCODE, err_ATT_ERR);
+    send_uint(tag_ERRSTAT, status);
+    send_str(tag_ERRMSG, att_ecode2str(status));
+    resp_end();
 }
 
 static void resp_mgmt(const char *errcode)
 {
-  resp_begin(rsp_MGMT);
-  send_sym(tag_ERRCODE, errcode);
-  resp_end();
+    resp_begin(rsp_MGMT);
+    send_sym(tag_ERRCODE, errcode);
+    resp_end();
 }
 
 static void resp_mgmt_err(uint8_t status)
 {
-  resp_begin(rsp_MGMT);
-  send_sym(tag_ERRCODE, err_MGMT_ERR);
-  send_uint(tag_ERRSTAT, status);
-  send_str(tag_ERRMSG, mgmt_errstr(status));
-  resp_end();
+    resp_begin(rsp_MGMT);
+    send_sym(tag_ERRCODE, err_MGMT_ERR);
+    send_uint(tag_ERRSTAT, status);
+    send_str(tag_ERRMSG, mgmt_errstr(status));
+    resp_end();
 }
 
 static void cmd_status(int argcp, char **argvp)
 {
-  resp_begin(rsp_STATUS);
-  switch(conn_state)
-  {
-    case STATE_CONNECTING:
-      send_sym(tag_CONNSTATE, st_CONNECTING);
-      send_str(tag_DEVICE, opt_dst);
-      break;
+    resp_begin(rsp_STATUS);
+    switch(conn_state)
+    {
+        case STATE_CONNECTING:
+            send_sym(tag_CONNSTATE, st_CONNECTING);
+            send_str(tag_DEVICE, opt_dst);
+            break;
 
-    case STATE_CONNECTED:
-      send_sym(tag_CONNSTATE, st_CONNECTED);
-      send_str(tag_DEVICE, opt_dst);
-      break;
+        case STATE_CONNECTED:
+            send_sym(tag_CONNSTATE, st_CONNECTED);
+            send_str(tag_DEVICE, opt_dst);
+            break;
 
-    case STATE_SCANNING:
-      send_sym(tag_CONNSTATE, st_SCANNING);
-      send_str(tag_DEVICE, opt_dst);
-      break;
+        case STATE_SCANNING:
+            send_sym(tag_CONNSTATE, st_SCANNING);
+            send_str(tag_DEVICE, opt_dst);
+            break;
 
-    default:
-      send_sym(tag_CONNSTATE, st_DISCONNECTED);
-      break;
-  }
+        default:
+            send_sym(tag_CONNSTATE, st_DISCONNECTED);
+            break;
+    }
 
-  send_uint(tag_MTU, opt_mtu);
-  send_str(tag_SEC_LEVEL, opt_sec_level);
-  resp_end();
+    send_uint(tag_MTU, opt_mtu);
+    send_str(tag_SEC_LEVEL, opt_sec_level);
+    resp_end();
 }
 
 static void set_state(enum state st)
