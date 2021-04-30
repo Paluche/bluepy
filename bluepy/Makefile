@@ -1,10 +1,28 @@
 BLUEZ_PATH=./bluez-5.47
 
-BLUEZ_SRCS  = lib/bluetooth.c lib/hci.c lib/sdp.c lib/uuid.c
-BLUEZ_SRCS += attrib/att.c attrib/gatt.c attrib/gattrib.c attrib/utils.c
-BLUEZ_SRCS += btio/btio.c src/log.c src/shared/mgmt.c
-BLUEZ_SRCS += src/shared/crypto.c src/shared/att.c src/shared/queue.c src/shared/util.c
-BLUEZ_SRCS += src/shared/io-glib.c src/shared/timeout-glib.c
+BLUEZ_SRCS += lib/bluetooth.c
+BLUEZ_SRCS += lib/hci.c
+BLUEZ_SRCS += lib/sdp.c
+BLUEZ_SRCS += lib/uuid.c
+BLUEZ_SRCS += attrib/att.c
+BLUEZ_SRCS += attrib/gatt.c
+BLUEZ_SRCS += attrib/gattrib.c
+BLUEZ_SRCS += attrib/utils.c
+BLUEZ_SRCS += btio/btio.c
+BLUEZ_SRCS += src/log.c
+BLUEZ_SRCS += src/shared/mgmt.c
+BLUEZ_SRCS += src/shared/crypto.c
+BLUEZ_SRCS += src/shared/att.c
+BLUEZ_SRCS += src/shared/queue.c
+BLUEZ_SRCS += src/shared/util.c
+BLUEZ_SRCS += src/shared/io-glib.c
+BLUEZ_SRCS += src/shared/timeout-glib.c
+
+BLUEZ_INCS += $(BLUEZ_PATH)
+BLUEZ_INCS += $(BLUEZ_PATH)/attrib
+BLUEZ_INCS += $(BLUEZ_PATH)/lib
+BLUEZ_INCS += $(BLUEZ_PATH)/btio
+BLUEZ_INCS += $(BLUEZ_PATH)/sys
 
 IMPORT_SRCS = $(addprefix $(BLUEZ_PATH)/, $(BLUEZ_SRCS))
 LOCAL_SRCS  = bluepy-helper.c
@@ -19,14 +37,14 @@ else
 CFLAGS += -Os
 endif
 
-CPPFLAGS += -I$(BLUEZ_PATH)/attrib -I$(BLUEZ_PATH) -I$(BLUEZ_PATH)/lib -I$(BLUEZ_PATH)/src -I$(BLUEZ_PATH)/gdbus -I$(BLUEZ_PATH)/btio -I$(BLUEZ_PATH)/sys
-
+CPPFLAGS += $(addprefix -I, $(BLUEZ_INCS))
 CPPFLAGS += $(shell pkg-config glib-2.0 --cflags)
+
 LDLIBS += $(shell pkg-config glib-2.0 --libs)
 
 all: bluepy-helper
 
-bluepy-helper: $(LOCAL_SRCS) $(IMPORT_SRCS)
+bluepy-helper: $(LOCAL_SRCS) $(IMPORT_SRCS) Makefile
 	$(CC) -L. $(CFLAGS) $(CPPFLAGS) -o $@ $(LOCAL_SRCS) $(IMPORT_SRCS) $(LDLIBS)
 
 $(IMPORT_SRCS): bluez-src.tgz
