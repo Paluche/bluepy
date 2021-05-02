@@ -73,7 +73,7 @@ setup(
     packages=['bluepy'],
 
     package_data={
-        'bluepy': ['bluepy-helper', '*.json', 'bluez-src.tgz', 'bluepy-helper.c', 'version.h', 'Makefile']
+        'bluepy': ['bluepy-helper', '*.json'],
     },
     cmdclass=setup_cmdclass,
     entry_points={
