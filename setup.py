@@ -16,11 +16,16 @@ def pre_install():
     """
     try:
         cwd = os.getcwd()
+        bluepy_dir = os.path.dirname(__file__)
+        helper_dir = os.path.join(bluepy_dir, 'bluepy', 'helper')
+        version_header = os.path.join(helper_dir, 'sources', 'version.h')
         print(f'Working dir is {cwd}')
-        with open('bluepy/version.h', 'w') as verfile:
+
+        with open(version_header, 'w') as verfile:
             verfile.write(f'#define VERSION_STRING "{VERSION}"\n')
-        for cmd in ['make -C ./bluepy clean', 'make -C bluepy -j1']:
-            print(f'execute {cmd}')
+
+        for cmd in [f'make -C {helper_dir} clean', f'make -C {helper_dir}']:
+            print('execute ' + cmd)
             subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as error:
         print('Failed to compile bluepy-helper. Exiting install.')
@@ -70,10 +75,10 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
     ],
-    packages=['bluepy'],
+    packages=['bluepy/bluepy'],
 
     package_data={
-        'bluepy': ['bluepy-helper', '*.json'],
+        'bluepy/bluepy': ['bluepy-helper', '*.json'],
     },
     cmdclass=setup_cmdclass,
     entry_points={

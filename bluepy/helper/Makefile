@@ -1,4 +1,9 @@
-BLUEZ_PATH=./bluez-5.47
+BUILD_UUID_JSON = ../build_uuid_json.py
+
+CUR_DIR = $(realpath $(shell pwd))
+TOP_DIR = $(realpath $(CUR_DIR)/../../)
+BLUEPY_DIR = $(TOP_DIR)/bluepy/bluepy
+BLUEZ_PATH = $(CUR_DIR)/bluez-5.47
 
 BLUEZ_SRCS += lib/bluetooth.c
 BLUEZ_SRCS += lib/hci.c
@@ -21,11 +26,10 @@ BLUEZ_SRCS += src/shared/timeout-glib.c
 BLUEZ_INCS += $(BLUEZ_PATH)
 BLUEZ_INCS += $(BLUEZ_PATH)/attrib
 BLUEZ_INCS += $(BLUEZ_PATH)/lib
-BLUEZ_INCS += $(BLUEZ_PATH)/btio
 BLUEZ_INCS += $(BLUEZ_PATH)/sys
 
 IMPORT_SRCS = $(addprefix $(BLUEZ_PATH)/, $(BLUEZ_SRCS))
-LOCAL_SRCS  = bluepy-helper.c
+LOCAL_SRCS  = sources/bluepy-helper.c
 
 CC ?= gcc
 CFLAGS += -g -Wall -Wextra -Werror -Wno-unused-parameter
@@ -42,9 +46,11 @@ CPPFLAGS += $(shell pkg-config glib-2.0 --cflags)
 
 LDLIBS += $(shell pkg-config glib-2.0 --libs)
 
-all: bluepy-helper
+BLUEPY_HELPER = $(BLUEPY_DIR)/bluepy-helper
 
-bluepy-helper: $(LOCAL_SRCS) $(IMPORT_SRCS) Makefile
+all: $(BLUEPY_HELPER)
+
+$(BLUEPY_HELPER): $(LOCAL_SRCS) $(IMPORT_SRCS) Makefile
 	$(CC) -L. $(CFLAGS) $(CPPFLAGS) -o $@ $(LOCAL_SRCS) $(IMPORT_SRCS) $(LDLIBS)
 
 $(IMPORT_SRCS): bluez-src.tgz

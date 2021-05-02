@@ -22,7 +22,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#include <config.h>
 #endif
 
 #include <string.h>
@@ -33,20 +33,21 @@
 #include <glib.h>
 
 
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
-#include "lib/uuid.h"
-#include "lib/mgmt.h"
-#include "src/shared/mgmt.h"
+#include <bluetooth.h>
+#include <sdp.h>
+#include <uuid.h>
+#include <mgmt.h>
+#include <src/shared/mgmt.h>
 
 #include <btio/btio.h>
-#include "att.h"
-#include "gattrib.h"
-#include "gatt.h"
-#include "gatttool.h"
+#include <att.h>
+#include <gattrib.h>
+#include <gatt.h>
+#include <gatttool.h>
+#include <hci.h>
+#include <hci_lib.h>
+
 #include "version.h"
-#include "hci.h"
-#include "hci_lib.h"
 
 
 #define IO_CAPABILITY_NOINPUTNOOUTPUT   0x03
