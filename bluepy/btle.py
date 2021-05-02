@@ -73,11 +73,11 @@ class BluepyError(Exception):
         if self.estat or self.emsg:
             msg = msg + ' ('
             if self.estat:
-                msg = msg + 'code: %s' % self.estat
+                msg = msg + f'code: {self.estat}'
             if self.estat and self.emsg:
                 msg = msg + ', '
             if self.emsg:
-                msg = msg + 'error: %s' % self.emsg
+                msg = msg + f'error: {self.emsg}'
             msg = msg + ')'
 
         return msg
@@ -127,10 +127,7 @@ class UUID:
         self.bin_val = binascii.a2b_hex(val.encode('utf-8'))
         if len(self.bin_val) != 16:
             raise ValueError(
-                'UUID must be 16 bytes, got "%s" (len=%d)' % (
-                    val,
-                    len(self.bin_val)
-                )
+                f'UUID must be 16 bytes, got "{val}" (len={len(self.bin_val)})'
             )
         self.common_name = common_name
 
@@ -212,7 +209,7 @@ class Service:
         return self.descs
 
     def __str__(self):
-        return 'Service <uuid=%s handleStart=%s handleEnd=%s>' % (
+        return 'Service <uuid={} handleStart={} handleEnd={}>'.format(
             self.uuid.get_common_name(),
             self.handle_start,
             self.handle_end
@@ -283,7 +280,7 @@ class Characteristic:
         return self.descs
 
     def __str__(self):
-        return 'Characteristic <%s>' % self.uuid.get_common_name()
+        return f'Characteristic <{self.uuid.get_common_name()}>'
 
     def supports_read(self):
         return bool(self.properties & Characteristic.props['READ'])
@@ -305,7 +302,7 @@ class Descriptor:
         self.uuid = UUID(uuid_value)
 
     def __str__(self):
-        return 'Descriptor <%s>' % self.uuid.get_common_name()
+        return f'Descriptor <{self.uuid.get_common_name()}>'
 
     def read(self):
         return self.peripheral.read_characteristic(self.handle)
@@ -392,7 +389,7 @@ class BluepyHelper:
         if response['code'][0] != 'success':
             self._stop_helper()
             raise BluepyManagementError(
-                'Failed to execute management command "%s"' % (cmd),
+                f'Failed to execute management command "{cmd}"',
                 response
             )
 
@@ -412,7 +409,7 @@ class BluepyHelper:
                 val = binascii.a2b_hex(tval[1:].encode('utf-8'))
             else:
                 raise BluepyInternalError(
-                    'Cannot understand response value %s' % repr(tval)
+                    f'Cannot understand response value {tval!r}'
                 )
             if tag not in resp:
                 resp[tag] = [val]
@@ -468,17 +465,14 @@ class BluepyHelper:
                     )
                 if errcode == 'atterr':
                     raise BluepyGattError('Bluetooth command failed', resp)
-                raise BluepyError('Error from bluepy-helper (%s)' % errcode,
-                                  resp)
+                raise BluepyError(f'Error from bluepy-helper ({errcode})', resp)
 
             if resp_type == 'scan':
                 # Scan response when we weren't interested. Ignore it.
                 continue
 
-            raise BluepyInternalError(
-                'Unexpected response (%s)' % resp_type,
-                resp
-            )
+            raise BluepyInternalError(f'Unexpected response ({resp_type})',
+                                      resp)
 
     def status(self):
         self._write_cmd('stat\n')
@@ -537,31 +531,27 @@ class Peripheral(BluepyHelper):
                  iface=None,
                  timeout=None):
         if len(addr.split(':')) != 6:
-            raise ValueError('Expected MAC address, got %s' % repr(addr))
+            raise ValueError(f'Expected MAC address, got {addr!r}')
 
         if addr_type not in (ADDR_TYPE_PUBLIC, ADDR_TYPE_RANDOM):
             raise ValueError(
-                'Expected address type public or random, got {}'.format(
-                    addr_type
-                )
+                f'Expected address type public or random, got {addr_type}'
             )
 
         self._start_helper(iface)
         self.addr = addr
         self.addr_type = addr_type
         self.iface = iface
+        cmd = f'conn {adrr} {addr_type}'
         if iface is not None:
-            self._write_cmd(
-                'conn %s %s %s\n' % (addr, addr_type, 'hci' + str(iface))
-            )
-        else:
-            self._write_cmd('conn %s %s\n' % (addr, addr_type))
+            cmd += f' hci {iface}'
+
+        self._write_cmd(cmd + '\n')
         response = self._get_resp('stat', timeout)
         if response is None:
             raise BluepyDisconnectError(
-                'Timed out while trying to connect to peripheral %s, '
-                'addr type: %s' %
-                (addr, addr_type),
+                f'Timed out while trying to connect to peripheral {addr}, '
+                f'addr type: {addr_type}',
                 response
             )
         while response['state'][0] == 'tryconn':
@@ -569,10 +559,8 @@ class Peripheral(BluepyHelper):
         if response['state'][0] != 'conn':
             self._stop_helper()
             raise BluepyDisconnectError(
-                'Failed to connect to peripheral %s, addr type: %s' % (
-                    addr,
-                    addr_type
-                ),
+                f'Failed to connect to peripheral {addr}, addr type: '
+                f'{addr_type}',
                 response
             )
 
@@ -629,11 +617,11 @@ class Peripheral(BluepyHelper):
         uuid = UUID(uuid_value)
         if self._service_map is not None and uuid in self._service_map:
             return self._service_map[uuid]
-        self._write_cmd('svcs %s\n' % uuid)
+        self._write_cmd(f'svcs {uuid}\n')
         response = self._get_resp('find')
         if 'hstart' not in response:
             raise BluepyGattError(
-                'Service %s not found' % (uuid.get_common_name()),
+                f'Service {uuid.get_common_name()} not found',
                 response
             )
         svc = Service(self, uuid, response['hstart'][0], response['hend'][0])
@@ -645,16 +633,16 @@ class Peripheral(BluepyHelper):
 
     def _get_included_services(self, start_handle=1, end_handle=0xFFFF):
         # TODO: No working example of this yet
-        self._write_cmd('incl %X %X\n' % (start_handle, end_handle))
+        self._write_cmd(f'incl {start_handle:X} {end_handle:X}\n')
         return self._get_resp('find')
 
     def get_characteristics(self,
                             start_handle=1,
                             end_handle=0xFFFF,
                             uuid=None):
-        cmd = 'char %X %X' % (start_handle, end_handle)
+        cmd = f'char {start_handle:X} {end_handle:X}'
         if uuid:
-            cmd += ' %s' % UUID(uuid)
+            cmd += f' {UUID(uuid)}'
         self._write_cmd(cmd + '\n')
         response = self._get_resp('find')
         chars_nb = len(response['hnd'])
@@ -666,7 +654,7 @@ class Peripheral(BluepyHelper):
                 for i in range(chars_nb)]
 
     def get_descriptors(self, start_handle=1, end_handle=0xFFFF):
-        self._write_cmd('desc %X %X\n' % (start_handle, end_handle))
+        self._write_cmd(f'desc {start_handle:X]} {end_handle:X}\n')
         # Historical note:
         # Certain Bluetooth LE devices are not capable of sending back all
         # descriptors in one packet due to the limited size of MTU. So the
@@ -681,15 +669,13 @@ class Peripheral(BluepyHelper):
                 for i in range(ndesc)]
 
     def read_characteristic(self, handle):
-        self._write_cmd('rd %X\n' % handle)
+        self._write_cmd(f'rd {handle:X}\n')
         resp = self._get_resp('rd')
         return resp['d'][0]
 
     def _read_characteristic_by_uuid(self, uuid, start_handle, end_handle):
         # Not used at present
-        self._write_cmd(
-            'rdu %s %X %X\n' % (UUID(uuid), start_handle, end_handle)
-        )
+        self._write_cmd(f'rdu {UUID(uuid)} {start_handle:X} {end_handle:X}\n')
         return self._get_resp('rd')
 
     def write_characteristic(self,
@@ -701,12 +687,16 @@ class Peripheral(BluepyHelper):
         # but with response, it will be sent as a queued write
         cmd = 'wrr' if with_response else 'wr'
         self._write_cmd(
-            '%s %X %s\n' % (cmd, handle, binascii.b2a_hex(val).decode('utf-8'))
+            '{} {:X} {}'.format(
+                cmd,
+                handle,
+                binascii.b2a_hex(val).decode('utf-8')
+            )
         )
         return self._get_resp('wr', timeout)
 
     def set_security_level(self, level):
-        self._write_cmd('secu %s\n' % level)
+        self._write_cmd(f'secu {level}\n')
         return self._get_resp('stat')
 
     def unpair(self):
@@ -719,7 +709,7 @@ class Peripheral(BluepyHelper):
         return self._mtu
 
     def set_mtu(self, mtu):
-        self._write_cmd('mtu %x\n' % mtu)
+        self._write_cmd(f'mtu {mtu:x}\n')
         return self._get_resp('stat')
 
     def wait_for_notifications(self, timeout):
@@ -744,13 +734,11 @@ class Peripheral(BluepyHelper):
 
     def set_remote_oob(self, address, address_type, oob_data, iface=None):
         if len(address.split(':')) != 6:
-            raise ValueError('Expected MAC address, got %s' % repr(address))
+            raise ValueError(f'Expected MAC address, got {addr!r}')
 
         if address_type not in (ADDR_TYPE_PUBLIC, ADDR_TYPE_RANDOM):
             raise ValueError(
-                'Expected address type public or random, got {}'.format(
-                    address_type
-                )
+                f'Expected address type public or random, got {address_type}'
             )
 
         if isinstance(address, ScanEntry):
@@ -898,7 +886,7 @@ class ScanEntry:
         addr_type = self.addr_types.get(resp['type'][0], None)
         if (self.addr_type is not None) and (addr_type != self.addr_type):
             raise BluepyInternalError(
-                'Address type changed during scan, for address %s' % self.addr
+                f'Address type changed during scan, for address {self.addr}'
             )
         self.addr_type = addr_type
         self.rssi = -resp['rssi'][0]
@@ -1078,10 +1066,10 @@ class Scanner(BluepyHelper):
 # TODO split binary from module code.
 def main():
     if len(sys.argv) < 2:
-        sys.exit('Usage:\n  %s <mac-address> [random]' % sys.argv[0])
+        sys.exit(f'Usage:\n  {sys.argv[0]} <mac-address> [random]')
 
     if not os.path.isfile(HELPER_EXE):
-        raise ImportError('Cannot find required executable"%s"' % HELPER_EXE)
+        raise ImportError(f'Cannot find required executable "{HELPER_EXE}"')
 
     dev_addr = sys.argv[1]
     if len(sys.argv) == 3:
