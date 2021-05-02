@@ -62,10 +62,10 @@ $(IMPORT_SRCS): bluez-src.tgz
 bluez-tarfile:
 	(cd ..; tar czf bluepy/bluez-src.tgz $(BLUEZ_PATH))
 
-GET_SERVICES=get_services.py
+BUILD_UUID_JSON = ../build_uuid_json.py
 
 uuids.json: $(GET_SERVICES)
-	python3 $(GET_SERVICES) > uuids.json
+	$(BUILD_UUID_JSON) -w uuids.json
 
 TAGS: *.c $(BLUEZ_PATH)/attrib/*.[ch] $(BLUEZ_PATH)/btio/*.[ch]
 	etags $^
