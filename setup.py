@@ -15,17 +15,17 @@ def pre_install():
        Makefile
     """
     try:
-        print("Working dir is " + os.getcwd())
-        with open("bluepy/version.h", "w") as verfile:
+        print('Working dir is ' + os.getcwd())
+        with open('bluepy/version.h', 'w') as verfile:
             verfile.write('#define VERSION_STRING "%s"\n' % VERSION)
-        for cmd in ["make -C ./bluepy clean", "make -C bluepy -j1"]:
-            print("execute " + cmd)
+        for cmd in ['make -C ./bluepy clean', 'make -C bluepy -j1']:
+            print('execute ' + cmd)
             subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as error:
-        print("Failed to compile bluepy-helper. Exiting install.")
-        print("Command was " + repr(cmd) + " in " + os.getcwd())
-        print("Return code was %d" % error.returncode)
-        print("Output was:\n%s" % error.output)
+        print('Failed to compile bluepy-helper. Exiting install.')
+        print('Command was ' + repr(cmd) + ' in ' + os.getcwd())
+        print('Return code was %d' % error.returncode)
+        print('Output was:\n%s' % error.output)
         sys.exit(1)
 
 
