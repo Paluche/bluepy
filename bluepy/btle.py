@@ -497,9 +497,6 @@ class Peripheral(BluepyHelper):
         elif device_address is not None:
             self._connect(device_address, addr_type, iface, timeout)
 
-    def set_delegate(self, delegate_):  # same as with_delegate(), deprecated
-        return self.with_delegate(delegate_)
-
     def __enter__(self):
         return self
 
