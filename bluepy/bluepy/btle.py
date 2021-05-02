@@ -25,6 +25,9 @@ def preexec_function():
 SCRIPT_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)))
 HELPER_EXE = os.path.join(SCRIPT_PATH, 'bluepy-helper')
 
+if not os.path.isfile(HELPER_EXE):
+    raise ImportError(f'Cannot find required executable "{HELPER_EXE}"')
+
 SEC_LEVEL_LOW = 'low'
 SEC_LEVEL_MEDIUM = 'medium'
 SEC_LEVEL_HIGH = 'high'
@@ -1064,9 +1067,6 @@ class Scanner(BluepyHelper):
 def main():
     if len(sys.argv) < 2:
         sys.exit(f'Usage:\n  {sys.argv[0]} <mac-address> [random]')
-
-    if not os.path.isfile(HELPER_EXE):
-        raise ImportError(f'Cannot find required executable "{HELPER_EXE}"')
 
     dev_addr = sys.argv[1]
     if len(sys.argv) == 3:
