@@ -4,7 +4,9 @@ import argparse
 import binascii
 import os
 import sys
+import logging
 from bluepy import btle
+
 
 if os.getenv('C', '1') == '0':
     ANSI_RED = ''
@@ -24,53 +26,55 @@ else:
 
 
 def dump_services(dev):
-    services = sorted(dev.services, key=lambda service: service.hndStart)
+    services = sorted(dev.services, key=lambda service: service.handle_start)
     for service in services:
-        print("\t%04x: %s" % (service.hndStart, service))
-        if service.hndStart == service.hndEnd:
+        print("\t%04x: %s" % (service.handle_start, service))
+        if service.handle_start == service.handle_end:
             continue
 
-        chars = service.getCharacteristics()
+        chars = service.get_characteristics()
         for i, characteristic in enumerate(chars):
-            props = characteristic.propertiesToString()
-            handle = characteristic.getHandle()
+            props = characteristic.properties_to_string()
+            handle = characteristic.get_handle()
             if 'READ' in props:
                 val = characteristic.read()
-                if characteristic.uuid == btle.AssignedNumbers.device_name:
+                if characteristic.uuid == btle.assigned_numbers.device_name:
                     string = ANSI_CYAN + '\'' + \
                         val.decode('utf-8') + '\'' + ANSI_OFF
-                elif characteristic.uuid == btle.AssignedNumbers.device_information:
+                elif characteristic.uuid == btle.assigned_numbers.device_information:
                     string = repr(val)
                 else:
                     string = '<s' + binascii.b2a_hex(val).decode('utf-8') + '>'
             else:
                 string = ''
-            print("\t%04x:    %-59s %-12s %s" % (handle, characteristic, props, string))
+            print("\t%04x:    %-59s %-12s %s" % (handle,
+                                                 characteristic,
+                                                 props,
+                                                 string))
 
             while True:
                 handle += 1
-                if (handle > service.hndEnd or
+                if (handle > service.handle_end or
                     (i < len(chars) - 1 and
-                     handle >= chars[i + 1].getHandle() - 1)):
+                     handle >= chars[i + 1].get_handle() - 1)):
                     break
                 try:
-                    val = dev.readCharacteristic(handle)
+                    val = dev.read_characteristic(handle)
                     print("\t%04x:     <%s>" %
                           (handle, binascii.b2a_hex(val).decode('utf-8')))
-                except btle.BTLEException:
+                except btle.BluepyError:
                     break
 
 
 class ScanPrint(btle.DefaultDelegate):
-
     def __init__(self, opts):
         btle.DefaultDelegate.__init__(self)
         self.opts = opts
 
-    def handleDiscovery(self, dev, isNewDev, isNewData):
-        if isNewDev:
+    def discovery_handler(self, dev, is_new_device, is_new_data):
+        if is_new_device:
             status = "new"
-        elif isNewData:
+        elif is_new_data:
             if self.opts.new:
                 return
             status = "update"
@@ -85,18 +89,20 @@ class ScanPrint(btle.DefaultDelegate):
         print('    Device (%s): %s (%s), %d dBm %s' %
               (status,
                   ANSI_WHITE + dev.addr + ANSI_OFF,
-                  dev.addrType,
+                  dev.addr_type,
                   dev.rssi,
                   ('' if dev.connectable else '(not connectable)'))
               )
 
-        for (sdid, desc, val) in dev.getScanData():
+        for (sdid, desc, val) in dev.get_scan_data():
             if sdid in [8, 9]:
                 print('\t' + desc + ': \'' + ANSI_CYAN + val + ANSI_OFF + '\'')
             else:
                 print('\t' + desc + ': <' + val + '>')
-        if not dev.scanData:
+
+        if not dev.scan_data:
             print('\t(no data)')
+
         print()
 
 
@@ -151,28 +157,34 @@ def main():
         help='Increase output verbosity'
     )
 
-    arg = parser.parse_args(sys.argv[1:])
+    parsed = parser.parse_args(sys.argv[1:])
 
-    btle.Debugging = arg.verbose
+    if parsed.verbose:
+        logging.getLogger('bluepy').setLevel(logging.DEBUG)
 
-    scanner = btle.Scanner(arg.hci).withDelegate(ScanPrint(arg))
+    scanner = btle.Scanner(parsed.hci, delegate=ScanPrint(parsed))
 
     print(ANSI_RED + "Scanning for devices..." + ANSI_OFF)
-    devices = scanner.scan(arg.timeout)
+    devices = scanner.scan(parsed.timeout)
 
-    if arg.discover:
-        print(ANSI_RED + "Discovering services..." + ANSI_OFF)
+    if not parsed.discover:
+        return
 
-        for device in devices:
-            if not device.connectable or device.rssi < arg.sensitivity:
-                continue
+    print(ANSI_RED + "Discovering services..." + ANSI_OFF)
 
-            print("    Connecting to", ANSI_WHITE + device.addr + ANSI_OFF + ":")
+    for device in devices:
+        if not device.connectable or device.rssi < parsed.sensitivity:
+            continue
 
+        print("    Connecting to", ANSI_WHITE + device.addr + ANSI_OFF + ":")
+
+        try:
             dev = btle.Peripheral(device)
             dump_services(dev)
             dev.disconnect()
             print()
+        except btle.BluepyError as bluepy_error:
+            print(bluepy_error)
 
 if __name__ == "__main__":
     main()
