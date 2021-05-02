@@ -7,8 +7,7 @@ import os
 from setuptools.command.build_py import build_py
 from setuptools import setup
 
-VERSION = '1.3.0'
-
+VERSION = '2.0.0'
 
 def pre_install():
     """Do the custom compiling of the bluepy-helper executable from the
@@ -71,9 +70,7 @@ setup(
     download_url=f'https://github.com/IanHarvey/bluepy/tarball/v/{VERSION}',
     keywords=['Bluetooth', 'Bluetooth Smart', 'BLE', 'Bluetooth Low Energy'],
     classifiers=[
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.7',
     ],
     packages=['bluepy/bluepy'],
 
