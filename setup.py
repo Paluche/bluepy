@@ -7,15 +7,18 @@ import os
 from setuptools.command.build_py import build_py
 from setuptools import setup
 
-VERSION='1.3.0'
+VERSION = '1.3.0'
+
 
 def pre_install():
-    """Do the custom compiling of the bluepy-helper executable from the makefile"""
+    """Do the custom compiling of the bluepy-helper executable from the
+       Makefile
+    """
     try:
         print("Working dir is " + os.getcwd())
-        with open("bluepy/version.h","w") as verfile:
+        with open("bluepy/version.h", "w") as verfile:
             verfile.write('#define VERSION_STRING "%s"\n' % VERSION)
-        for cmd in [ "make -C ./bluepy clean", "make -C bluepy -j1" ]:
+        for cmd in ["make -C ./bluepy clean", "make -C bluepy -j1"]:
             print("execute " + cmd)
             subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as error:
@@ -25,10 +28,12 @@ def pre_install():
         print("Output was:\n%s" % error.output)
         sys.exit(1)
 
+
 class BluePyBuildPy(build_py):
     def run(self):
         pre_install()
         super().run()
+
 
 setup_cmdclass = {
     'build_py': BluePyBuildPy,
@@ -50,7 +55,7 @@ except ImportError:
     pass
 
 
-setup (
+setup(
     name='bluepy',
     version=VERSION,
     description='Python module for interfacing with BLE devices through Bluez',
@@ -58,7 +63,7 @@ setup (
     author_email='website-contact@fenditton.org',
     url='https://github.com/IanHarvey/bluepy',
     download_url='https://github.com/IanHarvey/bluepy/tarball/v/%s' % VERSION,
-    keywords=[ 'Bluetooth', 'Bluetooth Smart', 'BLE', 'Bluetooth Low Energy' ],
+    keywords=['Bluetooth', 'Bluetooth Smart', 'BLE', 'Bluetooth Low Energy'],
     classifiers=[
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.3',
