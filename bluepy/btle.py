@@ -15,10 +15,12 @@ import logging
 from queue import Queue, Empty
 from threading import Thread
 
+
 def preexec_function():
     # Ignore the SIGINT signal by setting the handler to the standard
     # signal handler SIG_IGN.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+
 
 SCRIPT_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)))
 HELPER_EXE = os.path.join(SCRIPT_PATH, 'bluepy-helper')
@@ -33,6 +35,22 @@ ADDR_TYPE_RANDOM = 'random'
 logger = logging.getLogger('bluepy')
 
 
+class _UUIDNameMap:
+    # Constructor sets self.currentTimeService, self.txPower, and so on
+    # from names.
+    def __init__(self, id_list):
+        self.id_map = {}
+
+        for uuid in id_list:
+            attr_name = re.sub(r'[ \(\)]', '_', uuid.common_name).rstrip('_')
+            vars(self)[attr_name] = uuid
+            self.id_map[uuid] = uuid
+
+    def get_common_name(self, uuid):
+        if uuid in self.id_map:
+            return self.id_map[uuid].common_name
+        return None
+
 class BluepyError(Exception):
     """Base class for all Bluepy exceptions"""
     def __init__(self, message, resp_dict=None):
@@ -42,11 +60,11 @@ class BluepyError(Exception):
         self.estat = None
         self.emsg = None
         if resp_dict:
-            self.estat = resp_dict.get('estat',None)
-            if isinstance(self.estat,list):
+            self.estat = resp_dict.get('estat', None)
+            if isinstance(self.estat, list):
                 self.estat = self.estat[0]
-            self.emsg = resp_dict.get('emsg',None)
-            if isinstance(self.emsg,list):
+            self.emsg = resp_dict.get('emsg', None)
+            if isinstance(self.emsg, list):
                 self.emsg = self.emsg[0]
         super().__init__()
 
@@ -64,29 +82,32 @@ class BluepyError(Exception):
 
         return msg
 
+
 class BluepyInternalError(BluepyError):
     def __init__(self, message, response=None):
         BluepyError.__init__(self, message, response)
+
 
 class BluepyDisconnectError(BluepyError):
     def __init__(self, message, response=None):
         BluepyError.__init__(self, message, response)
 
+
 class BluepyManagementError(BluepyError):
     def __init__(self, message, response=None):
         BluepyError.__init__(self, message, response)
+
 
 class BluepyGattError(BluepyError):
     def __init__(self, message, response=None):
         BluepyError.__init__(self, message, response)
 
 
-
 # TODO Use built-in module uuid.UUID, at least inherit from it.
 class UUID:
     def __init__(self, val, common_name=None):
         """We accept: 32-digit hex strings, with and without '-' characters,
-        4 to 8 digit hex strings, and integers
+        4 to 8 digit hex strings, and integers.
         """
         if isinstance(val, int):
             if (val < 0) or (val > 0xFFFFFFFF):
@@ -138,6 +159,19 @@ class UUID:
                 ret = ret[4:]
         return ret
 
+
+def get_json_uuid():
+    with open(os.path.join(SCRIPT_PATH, 'uuids.json'), 'rb') as uuids_file:
+        uuid_data = json.loads(uuids_file.read().decode('utf-8'))
+    for key in uuid_data.keys():
+        for number, cname, name in uuid_data[key]:
+            yield UUID(number, cname)
+            yield UUID(number, name)
+
+
+AssignedNumbers = _UUIDNameMap(get_json_uuid())
+
+
 class Service:
     def __init__(self, peripheral, uuid_value, handle_start, handle_end):
         self.peripheral = peripheral
@@ -148,7 +182,7 @@ class Service:
         self.descs = None
 
     def get_characteristics(self, for_uuid=None):
-        if not self.chars: # Unset, or empty
+        if not self.chars:  # Unset, or empty
             if self.handle_end <= self.handle_start:
                 self.chars = []
             else:
@@ -168,8 +202,9 @@ class Service:
             # declaration descriptor
             all_descs = self.peripheral.get_descriptors(self.handle_start + 1,
                                                         self.handle_end)
-            # Filter out the descriptors for the characteristic properties
-            # Note that this does not filter out characteristic value descriptors
+            # Filter out the descriptors for the characteristic properties.
+            # Note that this does not filter out characteristic value
+            # descriptors.
             self.descs = [desc for desc in all_descs if desc.uuid != 0x2803]
         if for_uuid is not None:
             uuid = UUID(for_uuid)
@@ -183,13 +218,14 @@ class Service:
             self.handle_end
         )
 
+
 class Characteristic:
     # Currently only READ is used in supports_read function,
-    # the rest is included to facilitate supportsXXXX functions if required
+    # the rest is included to facilitate supportsXXXX functions if required.
     props = {
         'BROADCAST': 0b00000001,
         'READ': 0b00000010,
-        'WRITE_NO_RESP':0b00000100,
+        'WRITE_NO_RESP': 0b00000100,
         'WRITE': 0b00001000,
         'NOTIFY': 0b00010000,
         'INDICATE': 0b00100000,
@@ -208,7 +244,12 @@ class Characteristic:
         0b10000000: 'EXTENDED PROPERTIES',
     }
 
-    def __init__(self, peripheral, uuid_value, handle, properties, value_handle):
+    def __init__(self,
+                 peripheral,
+                 uuid_value,
+                 handle,
+                 properties,
+                 value_handle):
         self.peripheral = peripheral
         self.uuid = UUID(uuid_value)
         self.handle = handle
@@ -257,6 +298,7 @@ class Characteristic:
     def get_handle(self):
         return self.value_handle
 
+
 class Descriptor:
     def __init__(self, *args):
         (self.peripheral, uuid_value, self.handle) = args
@@ -271,6 +313,7 @@ class Descriptor:
     def write(self, val, with_response=False):
         self.peripheral.write_characteristic(self.handle, val, with_response)
 
+
 class DefaultDelegate:
     def notification_handler(self, handle, data):
         logger.debug('Notification: %s sent data %s',
@@ -282,6 +325,7 @@ class DefaultDelegate:
                      'new ' if is_new_device else '',
                      scan_entry.addr,
                      ' with new data' if is_new_data else '')
+
 
 class BluepyHelper:
     def __init__(self):
@@ -295,7 +339,7 @@ class BluepyHelper:
         self.delegate = delegate_
         return self
 
-    def _start_helper(self,iface=None):
+    def _start_helper(self, iface=None):
         if self._helper is None:
             logger.debug('Running %s', HELPER_EXE)
             self._lineq = Queue()
@@ -311,7 +355,7 @@ class BluepyHelper:
                                             universal_newlines=True,
                                             preexec_fn=preexec_function)
             thread = Thread(target=self._read_to_queue)
-            thread.daemon = True # don't wait for it to exit
+            thread.daemon = True  # don't wait for it to exit
             thread.start()
 
     def _read_to_queue(self):
@@ -335,7 +379,9 @@ class BluepyHelper:
 
     def _write_cmd(self, cmd):
         if self._helper is None:
-            raise BluepyInternalError('Helper not started (did you call connect()?)')
+            raise BluepyInternalError(
+                'Helper not started (did you call connect()?)'
+            )
         logger.debug('Sent: %s', cmd)
         self._helper.stdin.write(cmd)
         self._helper.stdin.flush()
@@ -355,14 +401,14 @@ class BluepyHelper:
         resp = {}
         for item in line.rstrip().split('\x1e'):
             (tag, tval) = item.split('=')
-            if len(tval)==0:
+            if len(tval) == 0:
                 val = None
-            elif tval[0]=='$' or tval[0]=='\'':
+            elif tval[0] == '$' or tval[0] == '\'':
                 # Both symbols and strings as Python strings
                 val = tval[1:]
-            elif tval[0]=='h':
+            elif tval[0] == 'h':
                 val = int(tval[1:], 16)
-            elif tval[0]=='b':
+            elif tval[0] == 'b':
                 val = binascii.a2b_hex(tval[1:].encode('utf-8'))
             else:
                 raise BluepyInternalError(
@@ -386,7 +432,9 @@ class BluepyHelper:
                 return None
 
             logger.debug('Got: %s', repr(response))
-            if response.startswith('#') or response == '\n' or len(response)==0:
+            if response.startswith('#') or \
+               response == '\n' or \
+               len(response) == 0:
                 continue
 
             resp = self.parse_response(response)
@@ -406,7 +454,9 @@ class BluepyHelper:
                 return resp
 
             if resp_type == 'stat':
-                if 'state' in resp and len(resp['state']) > 0 and resp['state'][0] == 'disc':
+                if 'state' in resp and \
+                   len(resp['state']) > 0 and \
+                   resp['state'][0] == 'disc':
                     self._stop_helper()
                     raise BluepyDisconnectError('Device disconnected', resp)
             elif resp_type == 'err':
@@ -418,7 +468,8 @@ class BluepyHelper:
                     )
                 if errcode == 'atterr':
                     raise BluepyGattError('Bluetooth command failed', resp)
-                raise BluepyError('Error from bluepy-helper (%s)' % errcode, resp)
+                raise BluepyError('Error from bluepy-helper (%s)' % errcode,
+                                  resp)
 
             if resp_type == 'scan':
                 # Scan response when we weren't interested. Ignore it.
@@ -435,9 +486,13 @@ class BluepyHelper:
 
 
 class Peripheral(BluepyHelper):
-    def __init__(self, device_address=None, addr_type=ADDR_TYPE_PUBLIC, iface=None, timeout=None):
+    def __init__(self,
+                 device_address=None,
+                 addr_type=ADDR_TYPE_PUBLIC,
+                 iface=None,
+                 timeout=None):
         BluepyHelper.__init__(self)
-        self._service_map = None # Indexed by UUID
+        self._service_map = None  # Indexed by UUID
         (self.device_address, self.addr_type, self.iface) = (None, None, None)
 
         if isinstance(device_address, ScanEntry):
@@ -448,7 +503,7 @@ class Peripheral(BluepyHelper):
         elif device_address is not None:
             self._connect(device_address, addr_type, iface, timeout)
 
-    def set_delegate(self, delegate_): # same as with_delegate(), deprecated
+    def set_delegate(self, delegate_):  # same as with_delegate(), deprecated
         return self.with_delegate(delegate_)
 
     def __enter__(self):
@@ -476,25 +531,36 @@ class Peripheral(BluepyHelper):
                 continue
             return resp
 
-    def _connect(self, addr, addr_type=ADDR_TYPE_PUBLIC, iface=None, timeout=None):
+    def _connect(self,
+                 addr,
+                 addr_type=ADDR_TYPE_PUBLIC,
+                 iface=None,
+                 timeout=None):
         if len(addr.split(':')) != 6:
             raise ValueError('Expected MAC address, got %s' % repr(addr))
 
         if addr_type not in (ADDR_TYPE_PUBLIC, ADDR_TYPE_RANDOM):
-            raise ValueError('Expected address type public or random, got {}'.format(addr_type))
+            raise ValueError(
+                'Expected address type public or random, got {}'.format(
+                    addr_type
+                )
+            )
 
         self._start_helper(iface)
         self.addr = addr
         self.addr_type = addr_type
         self.iface = iface
         if iface is not None:
-            self._write_cmd('conn %s %s %s\n' % (addr, addr_type, 'hci'+str(iface)))
+            self._write_cmd(
+                'conn %s %s %s\n' % (addr, addr_type, 'hci' + str(iface))
+            )
         else:
             self._write_cmd('conn %s %s\n' % (addr, addr_type))
         response = self._get_resp('stat', timeout)
         if response is None:
             raise BluepyDisconnectError(
-                'Timed out while trying to connect to peripheral %s, addr type: %s' %
+                'Timed out while trying to connect to peripheral %s, '
+                'addr type: %s' %
                 (addr, addr_type),
                 response
             )
@@ -503,11 +569,18 @@ class Peripheral(BluepyHelper):
         if response['state'][0] != 'conn':
             self._stop_helper()
             raise BluepyDisconnectError(
-                'Failed to connect to peripheral %s, addr type: %s' % (addr, addr_type),
+                'Failed to connect to peripheral %s, addr type: %s' % (
+                    addr,
+                    addr_type
+                ),
                 response
             )
 
-    def connect(self, addr, addr_type=ADDR_TYPE_PUBLIC, iface=None, timeout=None):
+    def connect(self,
+                addr,
+                addr_type=ADDR_TYPE_PUBLIC,
+                iface=None,
+                timeout=None):
         if isinstance(addr, ScanEntry):
             self._connect(addr.addr, addr.addr_type, addr.iface, timeout)
         elif addr is not None:
@@ -533,7 +606,10 @@ class Peripheral(BluepyHelper):
         assert(len(starts) == services_nb and len(ends) == services_nb)
         self._service_map = {}
         for i in range(services_nb):
-            self._service_map[UUID(uuids[i])] = Service(self, uuids[i], starts[i], ends[i])
+            self._service_map[UUID(uuids[i])] = Service(self,
+                                                        uuids[i],
+                                                        starts[i],
+                                                        ends[i])
         return self._service_map
 
     def get_state(self):
@@ -556,7 +632,10 @@ class Peripheral(BluepyHelper):
         self._write_cmd('svcs %s\n' % uuid)
         response = self._get_resp('find')
         if 'hstart' not in response:
-            raise BluepyGattError('Service %s not found' % (uuid.get_common_name()), response)
+            raise BluepyGattError(
+                'Service %s not found' % (uuid.get_common_name()),
+                response
+            )
         svc = Service(self, uuid, response['hstart'][0], response['hend'][0])
 
         if self._service_map is None:
@@ -569,7 +648,10 @@ class Peripheral(BluepyHelper):
         self._write_cmd('incl %X %X\n' % (start_handle, end_handle))
         return self._get_resp('find')
 
-    def get_characteristics(self, start_handle=1, end_handle=0xFFFF, uuid=None):
+    def get_characteristics(self,
+                            start_handle=1,
+                            end_handle=0xFFFF,
+                            uuid=None):
         cmd = 'char %X %X' % (start_handle, end_handle)
         if uuid:
             cmd += ' %s' % UUID(uuid)
@@ -584,18 +666,19 @@ class Peripheral(BluepyHelper):
                 for i in range(chars_nb)]
 
     def get_descriptors(self, start_handle=1, end_handle=0xFFFF):
-        self._write_cmd('desc %X %X\n' % (start_handle, end_handle) )
+        self._write_cmd('desc %X %X\n' % (start_handle, end_handle))
         # Historical note:
         # Certain Bluetooth LE devices are not capable of sending back all
         # descriptors in one packet due to the limited size of MTU. So the
         # guest needs to check the response and make retries until all handles
         # are returned.
-        # In bluez 5.25 and later, gatt_discover_desc() in attrib/gatt.c does the retry
-        # so bluetooth_helper always returns a full list.
+        # In bluez 5.25 and later, gatt_discover_desc() in attrib/gatt.c does
+        # the retry so bluetooth_helper always returns a full list.
         # This was broken in earlier versions.
         resp = self._get_resp('desc')
         ndesc = len(resp['hnd'])
-        return [Descriptor(self, resp['uuid'][i], resp['hnd'][i]) for i in range(ndesc)]
+        return [Descriptor(self, resp['uuid'][i], resp['hnd'][i])
+                for i in range(ndesc)]
 
     def read_characteristic(self, handle):
         self._write_cmd('rd %X\n' % handle)
@@ -604,14 +687,22 @@ class Peripheral(BluepyHelper):
 
     def _read_characteristic_by_uuid(self, uuid, start_handle, end_handle):
         # Not used at present
-        self._write_cmd('rdu %s %X %X\n' % (UUID(uuid), start_handle, end_handle))
+        self._write_cmd(
+            'rdu %s %X %X\n' % (UUID(uuid), start_handle, end_handle)
+        )
         return self._get_resp('rd')
 
-    def write_characteristic(self, handle, val, with_response=False, timeout=None):
+    def write_characteristic(self,
+                             handle,
+                             val,
+                             with_response=False,
+                             timeout=None):
         # Without response, a value too long for one packet will be truncated,
         # but with response, it will be sent as a queued write
         cmd = 'wrr' if with_response else 'wr'
-        self._write_cmd('%s %X %s\n' % (cmd, handle, binascii.b2a_hex(val).decode('utf-8')))
+        self._write_cmd(
+            '%s %X %s\n' % (cmd, handle, binascii.b2a_hex(val).decode('utf-8'))
+        )
         return self._get_resp('wr', timeout)
 
     def set_security_level(self, level):
@@ -632,7 +723,7 @@ class Peripheral(BluepyHelper):
         return self._get_resp('stat')
 
     def wait_for_notifications(self, timeout):
-        return bool(self._get_resp(['ntfy','ind'], timeout))
+        return bool(self._get_resp(['ntfy', 'ind'], timeout))
 
     def _set_remote_oob(self, address, address_type, oob_data, iface=None):
         if self._helper is None:
@@ -642,11 +733,13 @@ class Peripheral(BluepyHelper):
         self.iface = iface
         cmd = 'remote_oob ' + address + ' ' + address_type
         if oob_data['C_192'] is not None and oob_data['R_192'] is not None:
-            cmd += ' C_192 ' + oob_data['C_192'] + ' R_192 ' + oob_data['R_192']
+            cmd += ' C_192 {} R_192 {}'.format(oob_data['C_192'],
+                                               oob_data['R_192'])
         if oob_data['C_256'] is not None and oob_data['R_256'] is not None:
-            cmd += ' C_256 ' + oob_data['C_256'] + ' R_256 ' + oob_data['R_256']
+            cmd += ' C_256 {} R_256 {}'.format(oob_data['C_256'],
+                                               oob_data['R_256'])
         if iface is not None:
-            cmd += ' hci'+str(iface)
+            cmd += ' hci' + str(iface)
         self._write_cmd(cmd)
 
     def set_remote_oob(self, address, address_type, oob_data, iface=None):
@@ -654,7 +747,11 @@ class Peripheral(BluepyHelper):
             raise ValueError('Expected MAC address, got %s' % repr(address))
 
         if address_type not in (ADDR_TYPE_PUBLIC, ADDR_TYPE_RANDOM):
-            raise ValueError('Expected address type public or random, got {}'.format(address_type))
+            raise ValueError(
+                'Expected address type public or random, got {}'.format(
+                    address_type
+                )
+            )
 
         if isinstance(address, ScanEntry):
             return self._set_remote_oob(address.addr,
@@ -712,7 +809,7 @@ class Peripheral(BluepyHelper):
                             'Malformed local OOB data (random).')
         random = data[32:48]
         if struct.unpack_from('<B', data, 48)[0] != 2 or \
-           struct.unpack_from('<B',data,49)[0] != 0x1:
+           struct.unpack_from('<B', data, 49)[0] != 0x1:
             raise BluepyManagementError(
                             'Malformed local OOB data (flags).')
         flags = data[50:51]
@@ -733,6 +830,7 @@ class Peripheral(BluepyHelper):
 
     def __del__(self):
         self.disconnect()
+
 
 class ScanEntry:
     addr_types = {
@@ -837,7 +935,7 @@ class ScanEntry:
         result = []
         for i in range(0, len(val), nbytes):
             if len(val) >= (i+nbytes):
-                result.append(self._decode_uuid(val[i:i+nbytes],nbytes))
+                result.append(self._decode_uuid(val[i:i+nbytes], nbytes))
         return result
 
     def get_description(self, sdid):
@@ -850,22 +948,27 @@ class ScanEntry:
 
         if sdid in [ScanEntry.SHORT_LOCAL_NAME, ScanEntry.COMPLETE_LOCAL_NAME]:
             try:
-                # Beware! Vol 3 Part C 18.3 doesn't give an encoding. Other references
-                # to 'local name' (e.g. vol 3 E, 6.23) suggest it's UTF-8 but in practice
-                # devices sometimes have garbage here. See #259, #275, #292.
+                # Beware! Vol 3 Part C 18.3 doesn't give an encoding. Other
+                # references to 'local name' (e.g. vol 3 E, 6.23) suggest it is
+                # UTF-8 but in practice devices sometimes have garbage here.
+                # See #259, #275, #292.
                 return val.decode('utf-8')
             except UnicodeDecodeError:
                 bbval = bytearray(val)
-                return ''.join([(chr(x) if (32 <= x <= 127) else '?') for x in bbval])
+                return ''.join([(chr(x) if (32 <= x <= 127) else '?')
+                                for x in bbval])
 
-        if sdid in [ScanEntry.INCOMPLETE_16B_SERVICES, ScanEntry.COMPLETE_16B_SERVICES]:
-            return self._decode_uuid_list(val,2)
+        if sdid in [ScanEntry.INCOMPLETE_16B_SERVICES,
+                    ScanEntry.COMPLETE_16B_SERVICES]:
+            return self._decode_uuid_list(val, 2)
 
-        if sdid in [ScanEntry.INCOMPLETE_32B_SERVICES, ScanEntry.COMPLETE_32B_SERVICES]:
-            return self._decode_uuid_list(val,4)
+        if sdid in [ScanEntry.INCOMPLETE_32B_SERVICES,
+                    ScanEntry.COMPLETE_32B_SERVICES]:
+            return self._decode_uuid_list(val, 4)
 
-        if sdid in [ScanEntry.INCOMPLETE_128B_SERVICES, ScanEntry.COMPLETE_128B_SERVICES]:
-            return self._decode_uuid_list(val,16)
+        if sdid in [ScanEntry.INCOMPLETE_128B_SERVICES,
+                    ScanEntry.COMPLETE_128B_SERVICES]:
+            return self._decode_uuid_list(val, 16)
 
         return val
 
@@ -878,7 +981,7 @@ class ScanEntry:
             return val
 
         if isinstance(val, list):
-            return ','.join(str(v) for v in val)
+            return ', '.join(str(v) for v in val)
 
         return binascii.b2a_hex(val).decode('ascii')
 
@@ -889,11 +992,11 @@ class ScanEntry:
 
 
 class Scanner(BluepyHelper):
-    def __init__(self,iface=0):
+    def __init__(self, iface=0):
         BluepyHelper.__init__(self)
         self.scanned = {}
-        self.iface=iface
-        self.passive=False
+        self.iface = iface
+        self.passive = False
 
     def _cmd(self):
         return 'pasv' if self.passive else 'scan'
@@ -902,13 +1005,13 @@ class Scanner(BluepyHelper):
         self.passive = passive
         self._start_helper(iface=self.iface)
         self._mgmt_cmd('le on')
-        self._write_cmd(self._cmd()+'\n')
+        self._write_cmd(self._cmd() + '\n')
         response = self._wait_response('mgmt')
         if response['code'][0] == 'success':
             return
         # Sometimes previous scan still ongoing
         if response['code'][0] == 'busy':
-            self._mgmt_cmd(self._cmd()+'end')
+            self._mgmt_cmd(self._cmd() + 'end')
             response = self._wait_response('stat')
             assert response['state'][0] == 'disc'
             self._mgmt_cmd(self._cmd())
@@ -923,7 +1026,8 @@ class Scanner(BluepyHelper):
     def process(self, timeout=10.0):
         if self._helper is None:
             raise BluepyInternalError(
-                                'Helper not started (did you call start()?)')
+                'Helper not started (did you call start()?)'
+            )
         start = time.time()
         while True:
             if timeout:
@@ -971,33 +1075,6 @@ class Scanner(BluepyHelper):
         return self.get_devices()
 
 
-class _UUIDNameMap:
-    # Constructor sets self.currentTimeService, self.txPower, and so on
-    # from names.
-    def __init__(self, id_list):
-        self.id_map = {}
-
-        for uuid in id_list:
-            attr_name = re.sub(r'[ \(\)]', '_', uuid.common_name).rstrip('_')
-            vars(self)[attr_name] = uuid
-            self.id_map[uuid] = uuid
-
-    def get_common_name(self, uuid):
-        if uuid in self.id_map:
-            return self.id_map[uuid].common_name
-        return None
-
-def get_json_uuid():
-    with open(os.path.join(SCRIPT_PATH, 'uuids.json'),'rb') as uuids_file:
-        uuid_data = json.loads(uuids_file.read().decode('utf-8'))
-    for key in uuid_data.keys():
-        for number, cname, name in uuid_data[key]:
-            yield UUID(number, cname)
-            yield UUID(number, name)
-
-AssignedNumbers = _UUIDNameMap(get_json_uuid())
-
-
 # TODO split binary from module code.
 def main():
     if len(sys.argv) < 2:
@@ -1032,6 +1109,7 @@ def main():
 
     finally:
         conn.disconnect()
+
 
 if __name__ == '__main__':
     main()
