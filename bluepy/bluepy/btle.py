@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Bluetooth Low Energy Python interface"""
 
 import re
@@ -1061,40 +1059,3 @@ class Scanner(BluepyHelper):
         self.process(timeout)
         self.stop()
         return self.get_devices()
-
-
-# TODO split binary from module code.
-def main():
-    if len(sys.argv) < 2:
-        sys.exit(f'Usage:\n  {sys.argv[0]} <mac-address> [random]')
-
-    dev_addr = sys.argv[1]
-    if len(sys.argv) == 3:
-        addr_type = sys.argv[2]
-    else:
-        addr_type = ADDR_TYPE_PUBLIC
-    print('Connecting to: {}, address type: {}'.format(dev_addr, addr_type))
-    conn = Peripheral(dev_addr, addr_type)
-    try:
-        for svc in conn.services:
-            print(str(svc), ':')
-            for characteristic in svc.get_characteristics():
-                print(
-                    '    {}, hnd={}, supports {}'.format(
-                        characteristic,
-                        hex(characteristic.handle),
-                        characteristic.properties_to_string()
-                    )
-                )
-                if characteristic.supports_read():
-                    try:
-                        print('    ->', repr(characteristic.read()))
-                    except BluepyError as bluepy_error:
-                        print('    ->', bluepy_error)
-
-    finally:
-        conn.disconnect()
-
-
-if __name__ == '__main__':
-    main()
