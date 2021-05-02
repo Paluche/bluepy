@@ -1,11 +1,11 @@
 """Python setup script for bluepy"""
 
-from setuptools.command.build_py import build_py
-from setuptools import setup
 import subprocess
 import shlex
 import sys
 import os
+from setuptools.command.build_py import build_py
+from setuptools import setup
 
 VERSION='1.3.0'
 
@@ -17,21 +17,21 @@ def pre_install():
             verfile.write('#define VERSION_STRING "%s"\n' % VERSION)
         for cmd in [ "make -C ./bluepy clean", "make -C bluepy -j1" ]:
             print("execute " + cmd)
-            msgs = subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
+            subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as error:
         print("Failed to compile bluepy-helper. Exiting install.")
         print("Command was " + repr(cmd) + " in " + os.getcwd())
-        print("Return code was %d" % e.returncode)
-        print("Output was:\n%s" % e.output)
+        print("Return code was %d" % error.returncode)
+        print("Output was:\n%s" % error.output)
         sys.exit(1)
 
-class my_build_py(build_py):
+class BluePyBuildPy(build_py):
     def run(self):
         pre_install()
-        build_py.run(self)
+        super().run()
 
 setup_cmdclass = {
-    'build_py' : my_build_py,
+    'build_py': BluePyBuildPy,
 }
 
 # Force package to be *not* pure Python
