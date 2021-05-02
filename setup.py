@@ -15,17 +15,18 @@ def pre_install():
        Makefile
     """
     try:
-        print('Working dir is ' + os.getcwd())
+        cwd = os.getcwd()
+        print(f'Working dir is {cwd}')
         with open('bluepy/version.h', 'w') as verfile:
-            verfile.write('#define VERSION_STRING "%s"\n' % VERSION)
+            verfile.write(f'#define VERSION_STRING "{VERSION}"\n')
         for cmd in ['make -C ./bluepy clean', 'make -C bluepy -j1']:
-            print('execute ' + cmd)
+            print(f'execute {cmd}')
             subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as error:
         print('Failed to compile bluepy-helper. Exiting install.')
-        print('Command was ' + repr(cmd) + ' in ' + os.getcwd())
-        print('Return code was %d' % error.returncode)
-        print('Output was:\n%s' % error.output)
+        print(f'Command was {cmd} in {cwd}')
+        print(f'Return code was {error.returncode}')
+        print(f'Output was:\n{error.output}')
         sys.exit(1)
 
 
@@ -62,7 +63,7 @@ setup(
     author='Ian Harvey',
     author_email='website-contact@fenditton.org',
     url='https://github.com/IanHarvey/bluepy',
-    download_url='https://github.com/IanHarvey/bluepy/tarball/v/%s' % VERSION,
+    download_url=f'https://github.com/IanHarvey/bluepy/tarball/v/{VERSION}',
     keywords=['Bluetooth', 'Bluetooth Smart', 'BLE', 'Bluetooth Low Energy'],
     classifiers=[
         'Programming Language :: Python :: 2.7',
