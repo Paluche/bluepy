@@ -37,8 +37,8 @@ logger = logging.getLogger('bluepy')
 
 
 class _UUIDNameMap:
-    # Constructor sets self.currentTimeService, self.txPower, and so on
-    # from names.
+    # Constructor sets self.currentTimeService, self.txPower, and so on from
+    # names.
     def __init__(self, id_list):
         self.id_map = {}
 
@@ -147,7 +147,7 @@ class UUID:
         return hash(self.bin_val)
 
     def get_common_name(self):
-        ret = AssignedNumbers.get_common_name(self)
+        ret = assigned_numbers.get_common_name(self)
         if ret:
             return ret
         ret = str(self)
@@ -167,7 +167,7 @@ def get_json_uuid():
             yield UUID(number, name)
 
 
-AssignedNumbers = _UUIDNameMap(get_json_uuid())
+assigned_numbers = _UUIDNameMap(get_json_uuid())
 
 
 class Service:
@@ -314,28 +314,31 @@ class Descriptor:
 
 class DefaultDelegate:
     def notification_handler(self, handle, data):
-        logger.debug('Notification: %s sent data %s',
-                     handle,
-                     binascii.b2a_hex(data))
+        print(f'Notification: {handle} sent data {binascii.b2a_hex(data)}')
 
     def discovery_handler(self, scan_entry, is_new_device, is_new_data):
-        logger.debug('Discovered %sdevice %s%s',
-                     'new ' if is_new_device else '',
-                     scan_entry.addr,
-                     ' with new data' if is_new_data else '')
+        print(
+            'Discovered {}device {}{}'.format(
+                'new ' if is_new_device else '',
+                scan_entry.addr,
+                  ' with new data' if is_new_data else ''
+            )
+        )
+
+
+def _preexec_function():
+    # Ignore the SIGINT signal by setting the handler to the standard
+    # signal handler SIG_IGN.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 class BluepyHelper:
-    def __init__(self):
+    def __init__(self, delegate=None):
         self._helper = None
         self._lineq = None
         self._stderr = None
         self._mtu = 0
-        self.delegate = DefaultDelegate()
-
-    def with_delegate(self, delegate_):
-        self.delegate = delegate_
-        return self
+        self.delegate = delegate
 
     def _start_helper(self, iface=None):
         if self._helper is None:
@@ -396,7 +399,7 @@ class BluepyHelper:
 
     @staticmethod
     def parse_response(line):
-        resp = {}
+        response = {}
         for item in line.rstrip().split('\x1e'):
             (tag, tval) = item.split('=')
             if len(tval) == 0:
@@ -412,13 +415,16 @@ class BluepyHelper:
                 raise BluepyInternalError(
                     f'Cannot understand response value {tval!r}'
                 )
-            if tag not in resp:
-                resp[tag] = [val]
+            if tag not in response:
+                response[tag] = [val]
             else:
-                resp[tag].append(val)
-        return resp
+                response[tag].append(val)
+        return response
 
     def _wait_response(self, wanted_type, timeout=None):
+        if not isinstance(wanted_type, list):
+            wanted_type = [wanted_type]
+
         while True:
             if self._helper.poll() is not None:
                 raise BluepyInternalError('Helper exited')
@@ -435,49 +441,54 @@ class BluepyHelper:
                len(response) == 0:
                 continue
 
-            resp = self.parse_response(response)
-            if 'response' not in resp:
-                raise BluepyInternalError('No response type indicator', resp)
+            response = self.parse_response(response)
+            if 'rsp' not in response:
+                raise BluepyInternalError('No response type indicator',
+                                          response)
 
-            resp_type = resp['rsp'][0]
+            response_type = response['rsp'][0]
+
+            print(f'response_type {response_type}')
 
             # always check for MTU updates
-            if 'mtu' in resp and len(resp['mtu']) > 0:
-                new_mtu = int(resp['mtu'][0])
+            if 'mtu' in response and len(response['mtu']) > 0:
+                new_mtu = int(response['mtu'][0])
                 if self._mtu != new_mtu:
                     self._mtu = new_mtu
                     logger.debug('Updated MTU: %s', self._mtu)
 
-            if resp_type in wanted_type:
-                return resp
+            if response_type in wanted_type:
+                return response
 
-            if resp_type == 'stat':
-                if 'state' in resp and \
-                   len(resp['state']) > 0 and \
-                   resp['state'][0] == 'disc':
+            print(f'response_type {response_type} not in wanted_type {wanted_type}')
+
+            if response_type == 'stat':
+                if 'state' in response and \
+                   len(response['state']) > 0 and \
+                   response['state'][0] == 'disc':
                     self._stop_helper()
-                    raise BluepyDisconnectError('Device disconnected', resp)
-            elif resp_type == 'err':
-                errcode = resp['code'][0]
+                    raise BluepyDisconnectError('Device disconnected', response)
+            elif response_type == 'err':
+                errcode = response['code'][0]
                 if errcode == 'nomgmt':
                     raise BluepyManagementError(
                         'Management not available (permissions problem?)',
-                        resp
+                        response
                     )
                 if errcode == 'atterr':
-                    raise BluepyGattError('Bluetooth command failed', resp)
-                raise BluepyError(f'Error from bluepy-helper ({errcode})', resp)
+                    raise BluepyGattError('Bluetooth command failed', response)
+                raise BluepyError(f'Error from bluepy-helper ({errcode})', response)
 
-            if resp_type == 'scan':
+            if response_type == 'scan':
                 # Scan response when we weren't interested. Ignore it.
                 continue
 
-            raise BluepyInternalError(f'Unexpected response ({resp_type})',
-                                      resp)
+            raise BluepyInternalError(f'Unexpected response ({response_type})',
+                                      response)
 
     def status(self):
         self._write_cmd('stat\n')
-        return self._wait_response(['stat'])
+        return self._wait_response('stat')
 
 
 class Peripheral(BluepyHelper):
@@ -509,19 +520,19 @@ class Peripheral(BluepyHelper):
             wanted_type = [wanted_type]
 
         while True:
-            resp = self._wait_response(wanted_type + ['ntfy', 'ind'], timeout)
-            if resp is None:
+            response = self._wait_response(wanted_type + ['ntfy', 'ind'], timeout)
+            if response is None:
                 return None
 
-            resp_type = resp['rsp'][0]
-            if resp_type in ('ntfy', 'ind'):
-                hnd = resp['hnd'][0]
-                data = resp['d'][0]
+            response_type = response['rsp'][0]
+            if response_type in ('ntfy', 'ind'):
+                hnd = response['hnd'][0]
+                data = response['d'][0]
                 if self.delegate is not None:
                     self.delegate.notification_handler(hnd, data)
-            if resp_type not in wanted_type:
+            if response_type not in wanted_type:
                 continue
-            return resp
+            return response
 
     def _connect(self,
                  addr,
@@ -540,7 +551,7 @@ class Peripheral(BluepyHelper):
         self.addr = addr
         self.addr_type = addr_type
         self.iface = iface
-        cmd = f'conn {adrr} {addr_type}'
+        cmd = f'conn {addr} {addr_type}'
         if iface is not None:
             cmd += f' hci {iface}'
 
@@ -576,7 +587,7 @@ class Peripheral(BluepyHelper):
         if self._helper is None:
             return
         # Unregister the delegate first
-        self.set_delegate(None)
+        self.delegate = None
 
         self._write_cmd('disc\n')
         self._get_resp('stat')
@@ -661,15 +672,15 @@ class Peripheral(BluepyHelper):
         # In bluez 5.25 and later, gatt_discover_desc() in attrib/gatt.c does
         # the retry so bluetooth_helper always returns a full list.
         # This was broken in earlier versions.
-        resp = self._get_resp('desc')
-        ndesc = len(resp['hnd'])
-        return [Descriptor(self, resp['uuid'][i], resp['hnd'][i])
+        response = self._get_resp('desc')
+        ndesc = len(response['hnd'])
+        return [Descriptor(self, response['uuid'][i], response['hnd'][i])
                 for i in range(ndesc)]
 
     def read_characteristic(self, handle):
         self._write_cmd(f'rd {handle:X}\n')
-        resp = self._get_resp('rd')
-        return resp['d'][0]
+        response = self._get_resp('rd')
+        return response['d'][0]
 
     def _read_characteristic_by_uuid(self, uuid, start_handle, end_handle):
         # Not used at present
@@ -761,12 +772,12 @@ class Peripheral(BluepyHelper):
             cmd += ' hci' + str(iface)
 
         self._write_cmd(cmd + '\n')
-        resp = self._get_resp('oob')
+        response = self._get_resp('oob')
 
-        if resp is None:
+        if response is None:
             raise BluepyManagementError('Failed to get local OOB response.')
 
-        data = resp.get('d', [''])[0]
+        data = response.get('d', [''])[0]
         if data is None:
             raise BluepyManagementError('Failed to get local OOB data.')
 
@@ -880,16 +891,16 @@ class ScanEntry:
         self.scan_data = {}
         self.update_count = 0
 
-    def _update(self, resp):
-        addr_type = self.addr_types.get(resp['type'][0], None)
+    def _update(self, response):
+        addr_type = self.addr_types.get(response['type'][0], None)
         if (self.addr_type is not None) and (addr_type != self.addr_type):
             raise BluepyInternalError(
                 f'Address type changed during scan, for address {self.addr}'
             )
         self.addr_type = addr_type
-        self.rssi = -resp['rssi'][0]
-        self.connectable = ((resp['flag'][0] & 0x4) == 0)
-        data = resp.get('d', [''])[0]
+        self.rssi = -response['rssi'][0]
+        self.connectable = ((response['flag'][0] & 0x4) == 0)
+        data = response.get('d', [''])[0]
         self.raw_data = data
 
         # Note: bluez is notifying devices twice: once with advertisement data,
@@ -978,11 +989,11 @@ class ScanEntry:
 
 
 class Scanner(BluepyHelper):
-    def __init__(self, iface=0):
-        BluepyHelper.__init__(self)
+    def __init__(self, iface=0, delegate=None):
         self.scanned = {}
         self.iface = iface
         self.passive = False
+        super().__init__(delegate=delegate)
 
     def _cmd(self):
         return 'pasv' if self.passive else 'scan'
@@ -1022,35 +1033,39 @@ class Scanner(BluepyHelper):
                     break
             else:
                 remain = None
-            resp = self._wait_response(['scan', 'stat'], remain)
-            if resp is None:
+            response = self._wait_response(['scan', 'stat'], remain)
+            if response is None:
                 break
 
-            resp_type = resp['rsp'][0]
-            if resp_type == 'stat':
+            response_type = response['rsp'][0]
+            if response_type == 'stat':
                 # if scan ended, restart it
-                if resp['state'][0] == 'disc':
+                if response['state'][0] == 'disc':
                     self._mgmt_cmd(self._cmd())
 
-            elif resp_type == 'scan':
-                # device found
-                addr = binascii.b2a_hex(resp['addr'][0]).decode('utf-8')
+            elif response_type == 'scan':
+                addr = binascii.b2a_hex(response['addr'][0]).decode('utf-8')
                 addr = ':'.join([addr[i:i + 2] for i in range(0, 12, 2)])
                 if addr in self.scanned:
+                    print(f'device found {addr} NOK')
                     dev = self.scanned[addr]
                 else:
+                    print(f'device found {addr} OK')
                     dev = ScanEntry(addr, self.iface)
                     self.scanned[addr] = dev
-                is_new_data = dev._update(resp)
+                is_new_data = dev._update(response)
                 if self.delegate is not None:
                     self.delegate.discovery_handler(dev,
                                                     (dev.update_count <= 1),
                                                     is_new_data)
             else:
-                raise BluepyInternalError('Unexpected response: ' + resp_type,
-                                          resp)
+                raise BluepyInternalError(
+                    'Unexpected response: ' + response_type,
+                    response
+                )
 
     def get_devices(self):
+        print(*self.scanned.keys())
         return self.scanned.values()
 
     def scan(self, timeout=10, passive=False):
