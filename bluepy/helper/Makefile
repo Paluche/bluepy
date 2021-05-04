@@ -52,6 +52,7 @@ all: $(BLUEPY_HELPER)
 
 $(BLUEPY_HELPER): $(LOCAL_SRCS) $(IMPORT_SRCS) Makefile
 	$(CC) -L. $(CFLAGS) $(CPPFLAGS) -o $@ $(LOCAL_SRCS) $(IMPORT_SRCS) $(LDLIBS)
+	sudo setcap "cap_net_raw,cap_net_admin+eip" $@
 
 $(IMPORT_SRCS): bluez-src.tgz
 	tar xzf $<
