@@ -1,16 +1,24 @@
-.DS_Store
+# Python cache
 *.pyc
 __pycache__
-bluepy/*.o
-#bluepy/bluepy-helper
+
 # eclipse project related files
 .settings/
 .cproject
 .project
+
 # cygwin modified files
 bluez-5.4/src/bluetoothd
 bluez-5.4/attrib/gatttool
+
+# VIM temporary files
 *.swp
+
+# Executables
+bluepy/bluepy/bluepy-helper
+
+# Build files
+*.o
 /build
 /bluepy.egg-info
 /dist
